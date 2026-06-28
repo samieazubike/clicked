@@ -5,7 +5,7 @@ import { createClient } from 'redis';
 import dotenv from 'dotenv';
 import { eq } from 'drizzle-orm';
 import { db } from './db/index.js';
-import { conversationMembers } from './db/schema.js';
+import { conversationMembers, users } from './db/schema.js';
 import { socketAuthMiddleware, type AuthSocket } from './middleware/socketAuth.js';
 import { registerMessagingHandlers } from './socket/messaging.js';
 import { app } from './app.js';
@@ -111,11 +111,19 @@ io.on('connection', async (socket: AuthSocket) => {
     await socket.join(m.conversationId);
   }
 
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { presenceVisible: true },
+  });
+  const presenceVisible = user?.presenceVisible ?? true;
+
   if (appRedis) {
     await setOnline(appRedis, userId, socket.id);
-    for (const m of memberships) {
-      io.to(m.conversationId).volatile.emit('user_online', { userId });
-      io.to(m.conversationId).volatile.emit('presence_update', { userId, online: true });
+    if (presenceVisible) {
+      for (const m of memberships) {
+        io.to(m.conversationId).emit('user_online', { userId });
+        io.to(m.conversationId).emit('presence_update', { userId, online: true });
+      }
     }
   }
 
@@ -134,13 +142,21 @@ io.on('connection', async (socket: AuthSocket) => {
     if (appRedis) {
       const fullyOffline = await setOffline(appRedis, userId, socket.id);
       if (fullyOffline) {
-        const memberships = await db.query.conversationMembers.findMany({
-          where: eq(conversationMembers.userId, userId),
-          columns: { conversationId: true },
+        const user = await db.query.users.findFirst({
+          where: eq(users.id, userId),
+          columns: { presenceVisible: true },
         });
-        for (const m of memberships) {
-          io.to(m.conversationId).volatile.emit('user_offline', { userId });
-          io.to(m.conversationId).volatile.emit('presence_update', { userId, online: false });
+        const presenceVisible = user?.presenceVisible ?? true;
+
+        if (presenceVisible) {
+          const memberships = await db.query.conversationMembers.findMany({
+            where: eq(conversationMembers.userId, userId),
+            columns: { conversationId: true },
+          });
+          for (const m of memberships) {
+            io.to(m.conversationId).emit('user_offline', { userId });
+            io.to(m.conversationId).emit('presence_update', { userId, online: false });
+          }
         }
       }
     }
