@@ -2,7 +2,13 @@ import { Router } from 'express';
 import type { IRouter } from 'express';
 import { asc, and, count, desc, eq, lt, sql, ne } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { conversationMembers, conversations, messages, tokenTransfers, messageEnvelopes } from '../db/schema.js';
+import {
+  conversationMembers,
+  conversations,
+  messages,
+  tokenTransfers,
+  messageEnvelopes,
+} from '../db/schema.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { redis, CONV_CACHE_TTL, convCacheKey } from '../lib/redis.js';
 import { invalidateConversationCaches } from '../lib/conversationCache.js';
@@ -28,12 +34,12 @@ const getConversationRelations = (deviceId: string) => ({
   messages: {
     orderBy: desc(messages.createdAt),
     limit: 1,
-    with: { 
+    with: {
       sender: { columns: { id: true, username: true, avatarUrl: true } },
       envelopes: {
         where: eq(messageEnvelopes.recipientDeviceId, deviceId),
         limit: 1,
-      }
+      },
     },
   },
 });
@@ -46,7 +52,9 @@ type ConversationPayload = {
 function serializeConversation<T extends ConversationPayload>(conversation: T): T {
   return {
     ...conversation,
-    messages: (conversation.messages ?? []).map((message) => serializeMessage(message as any)) as any,
+    messages: (conversation.messages ?? []).map((message) =>
+      serializeMessage(message as any),
+    ) as any,
   };
 }
 
@@ -101,7 +109,12 @@ conversationsRouter.get('/', async (req: AuthRequest, res) => {
     with: {
       conversation: getConversationRelations(req.auth!.deviceId) as never,
     },
-  })) as unknown as Array<{ conversationId: string; isMuted: boolean; isArchived: boolean; conversation: ConversationPayload }>;
+  })) as unknown as Array<{
+    conversationId: string;
+    isMuted: boolean;
+    isArchived: boolean;
+    conversation: ConversationPayload;
+  }>;
 
   // Single subquery for message counts — no N+1
   const conversationIds = memberships.map((m) => m.conversationId);
@@ -477,12 +490,12 @@ conversationsRouter.get('/:id/messages', async (req: AuthRequest, res) => {
       : eq(messages.conversationId, conversationId),
     orderBy: desc(messages.createdAt),
     limit: limit + 1,
-    with: { 
+    with: {
       sender: { columns: { id: true, username: true, avatarUrl: true } },
       envelopes: {
         where: eq(messageEnvelopes.recipientDeviceId, req.auth!.deviceId),
         limit: 1,
-      }
+      },
     },
   });
 

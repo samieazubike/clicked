@@ -58,24 +58,23 @@ export const conversationMembers = pgTable('conversation_members', {
   joinedAt: timestamp('joined_at').notNull().defaultNow(),
 });
 
-export const messages = pgTable(
-  'messages',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    conversationId: uuid('conversation_id')
-      .notNull()
-      .references(() => conversations.id, { onDelete: 'cascade' }),
-    senderId: uuid('sender_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    senderDeviceId: uuid('sender_device_id').references(() => userDevices.id, { onDelete: 'set null' }),
-    contentType: text('content_type').notNull().default('text/plain'),
-    sequenceNumber: serial('sequence_number'),
-    ciphertext: text('ciphertext'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    deletedAt: timestamp('deleted_at'),
-  }
-);
+export const messages = pgTable('messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  conversationId: uuid('conversation_id')
+    .notNull()
+    .references(() => conversations.id, { onDelete: 'cascade' }),
+  senderId: uuid('sender_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  senderDeviceId: uuid('sender_device_id').references(() => userDevices.id, {
+    onDelete: 'set null',
+  }),
+  contentType: text('content_type').notNull().default('text/plain'),
+  sequenceNumber: serial('sequence_number'),
+  ciphertext: text('ciphertext'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
 
 export const messageEnvelopes = pgTable(
   'message_envelopes',
@@ -287,13 +286,19 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     references: [conversations.id],
   }),
   sender: one(users, { fields: [messages.senderId], references: [users.id] }),
-  senderDevice: one(userDevices, { fields: [messages.senderDeviceId], references: [userDevices.id] }),
+  senderDevice: one(userDevices, {
+    fields: [messages.senderDeviceId],
+    references: [userDevices.id],
+  }),
   envelopes: many(messageEnvelopes),
 }));
 
 export const messageEnvelopesRelations = relations(messageEnvelopes, ({ one }) => ({
   message: one(messages, { fields: [messageEnvelopes.messageId], references: [messages.id] }),
-  recipientDevice: one(userDevices, { fields: [messageEnvelopes.recipientDeviceId], references: [userDevices.id] }),
+  recipientDevice: one(userDevices, {
+    fields: [messageEnvelopes.recipientDeviceId],
+    references: [userDevices.id],
+  }),
   recipientUser: one(users, { fields: [messageEnvelopes.recipientUserId], references: [users.id] }),
 }));
 

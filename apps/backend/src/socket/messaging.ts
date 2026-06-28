@@ -1,7 +1,13 @@
 import type { Server } from 'socket.io';
 import { and, eq, lt, desc, sql, inArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { conversations, conversationMembers, messages, messageEnvelopes, userDevices } from '../db/schema.js';
+import {
+  conversations,
+  conversationMembers,
+  messages,
+  messageEnvelopes,
+  userDevices,
+} from '../db/schema.js';
 import type { AuthSocket } from '../middleware/socketAuth.js';
 import { invalidateConversationCaches } from '../lib/conversationCache.js';
 import { serializeMessage } from '../lib/messages.js';
@@ -37,95 +43,103 @@ export function registerMessagingHandlers(io: Server, socket: AuthSocket): void 
   // ── send_message ───────────────────────────────────────────────────────────
   // Payload: { conversationId, messageId, contentType, ciphertext, envelopes }
   // Persists the message and broadcasts it to all room members.
-  socket.on('send_message', async (payload: {
-    conversationId: string;
-    messageId: string;
-    contentType?: string;
-    ciphertext?: string;
-    envelopes?: Array<{ recipientDeviceId: string; ciphertext: string }>;
-  }) => {
-    const { conversationId, messageId, contentType, ciphertext, envelopes } = payload;
-    const deviceId = socket.auth!.deviceId;
+  socket.on(
+    'send_message',
+    async (payload: {
+      conversationId: string;
+      messageId: string;
+      contentType?: string;
+      ciphertext?: string;
+      envelopes?: Array<{ recipientDeviceId: string; ciphertext: string }>;
+    }) => {
+      const { conversationId, messageId, contentType, ciphertext, envelopes } = payload;
+      const deviceId = socket.auth!.deviceId;
 
-    if (!messageId) {
-      socket.emit('error', { event: 'send_message', message: 'messageId is required' });
-      return;
-    }
-
-    if (!ciphertext?.trim() && (!envelopes || envelopes.length === 0)) {
-      socket.emit('error', { event: 'send_message', message: 'Message content is empty' });
-      return;
-    }
-
-    const membership = await db.query.conversationMembers.findFirst({
-      where: and(
-        eq(conversationMembers.conversationId, conversationId),
-        eq(conversationMembers.userId, userId),
-      ),
-    });
-
-    if (!membership) {
-      socket.emit('error', { event: 'send_message', message: 'Not a member of this conversation' });
-      return;
-    }
-
-    // Idempotency check
-    const existing = await db.query.messages.findFirst({
-      where: eq(messages.id, messageId),
-      columns: { sequenceNumber: true },
-    });
-    
-    if (existing) {
-      socket.emit('message_ack', { messageId, sequenceNumber: existing.sequenceNumber });
-      return;
-    }
-
-    const [message] = await db
-      .insert(messages)
-      .values({ 
-        id: messageId,
-        conversationId, 
-        senderId: userId, 
-        senderDeviceId: deviceId,
-        contentType: contentType || 'text/plain',
-        ciphertext: ciphertext || null,
-      })
-      .returning();
-
-    if (envelopes && envelopes.length > 0) {
-      const deviceIds = envelopes.map(e => e.recipientDeviceId);
-      const devicesList = await db.query.userDevices.findMany({
-        where: inArray(userDevices.id, deviceIds),
-        columns: { id: true, userId: true }
-      });
-      const deviceToUser = new Map(devicesList.map(d => [d.id, d.userId]));
-
-      const validEnvelopes = envelopes.filter(env => deviceToUser.has(env.recipientDeviceId)).map(env => ({
-        messageId,
-        recipientDeviceId: env.recipientDeviceId,
-        recipientUserId: deviceToUser.get(env.recipientDeviceId)!,
-        ciphertext: env.ciphertext
-      }));
-
-      if (validEnvelopes.length > 0) {
-        await db.insert(messageEnvelopes).values(validEnvelopes);
+      if (!messageId) {
+        socket.emit('error', { event: 'send_message', message: 'messageId is required' });
+        return;
       }
-    }
 
-    // Emit acknowledgment to sender
-    if (message) {
-      socket.emit('message_ack', { messageId, sequenceNumber: message.sequenceNumber });
-    }
+      if (!ciphertext?.trim() && (!envelopes || envelopes.length === 0)) {
+        socket.emit('error', { event: 'send_message', message: 'Message content is empty' });
+        return;
+      }
 
-    io.to(conversationId).emit('new_message', message);
+      const membership = await db.query.conversationMembers.findFirst({
+        where: and(
+          eq(conversationMembers.conversationId, conversationId),
+          eq(conversationMembers.userId, userId),
+        ),
+      });
 
-    const members = await db.query.conversationMembers.findMany({
-      where: eq(conversationMembers.conversationId, conversationId),
-      columns: { userId: true },
-    });
+      if (!membership) {
+        socket.emit('error', {
+          event: 'send_message',
+          message: 'Not a member of this conversation',
+        });
+        return;
+      }
 
-    await invalidateConversationCaches(members.map((member) => member.userId));
-  });
+      // Idempotency check
+      const existing = await db.query.messages.findFirst({
+        where: eq(messages.id, messageId),
+        columns: { sequenceNumber: true },
+      });
+
+      if (existing) {
+        socket.emit('message_ack', { messageId, sequenceNumber: existing.sequenceNumber });
+        return;
+      }
+
+      const [message] = await db
+        .insert(messages)
+        .values({
+          id: messageId,
+          conversationId,
+          senderId: userId,
+          senderDeviceId: deviceId,
+          contentType: contentType || 'text/plain',
+          ciphertext: ciphertext || null,
+        })
+        .returning();
+
+      if (envelopes && envelopes.length > 0) {
+        const deviceIds = envelopes.map((e) => e.recipientDeviceId);
+        const devicesList = await db.query.userDevices.findMany({
+          where: inArray(userDevices.id, deviceIds),
+          columns: { id: true, userId: true },
+        });
+        const deviceToUser = new Map(devicesList.map((d) => [d.id, d.userId]));
+
+        const validEnvelopes = envelopes
+          .filter((env) => deviceToUser.has(env.recipientDeviceId))
+          .map((env) => ({
+            messageId,
+            recipientDeviceId: env.recipientDeviceId,
+            recipientUserId: deviceToUser.get(env.recipientDeviceId)!,
+            ciphertext: env.ciphertext,
+          }));
+
+        if (validEnvelopes.length > 0) {
+          await db.insert(messageEnvelopes).values(validEnvelopes);
+        }
+      }
+
+      // Emit acknowledgment to sender
+      if (message) {
+        socket.emit('message_ack', { messageId, sequenceNumber: message.sequenceNumber });
+      }
+
+      io.to(conversationId).emit('new_message', message);
+
+      const members = await db.query.conversationMembers.findMany({
+        where: eq(conversationMembers.conversationId, conversationId),
+        columns: { userId: true },
+      });
+
+      await invalidateConversationCaches(members.map((member) => member.userId));
+    },
+  );
 
   // ── message_history ────────────────────────────────────────────────────────
   // Payload: { conversationId: string; before?: string } (before = message id cursor)
@@ -187,7 +201,10 @@ export function registerMessagingHandlers(io: Server, socket: AuthSocket): void 
       return;
     }
 
-    await db.update(messages).set({ deletedAt: new Date(), ciphertext: null }).where(eq(messages.id, messageId));
+    await db
+      .update(messages)
+      .set({ deletedAt: new Date(), ciphertext: null })
+      .where(eq(messages.id, messageId));
     await db.delete(messageEnvelopes).where(eq(messageEnvelopes.messageId, messageId));
 
     io.to(message.conversationId).emit('message_deleted', { messageId });

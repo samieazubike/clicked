@@ -13,7 +13,10 @@ type MessageLike = {
 
 export function serializeMessage<T extends MessageLike>(
   message: T,
-): Omit<T, 'deletedAt' | 'envelopes' | 'ciphertext'> & { ciphertext: string | null; unavailable?: boolean } {
+): Omit<T, 'deletedAt' | 'envelopes' | 'ciphertext'> & {
+  ciphertext: string | null;
+  unavailable?: boolean;
+} {
   const { deletedAt, envelopes, ciphertext: baseCiphertext, ...rest } = message;
 
   if (deletedAt) {
