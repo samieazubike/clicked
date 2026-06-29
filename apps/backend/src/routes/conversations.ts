@@ -104,12 +104,9 @@ conversationsRouter.get('/', async (req: AuthRequest, res) => {
       eq(conversationMembers.userId, userId),
       showArchived ? undefined : ne(conversationMembers.isArchived, true),
     ),
-    with: {
+        with: {
       conversation: getConversationRelations(req.auth!.deviceId) as never,
     },
-
-  })) as unknown as Array<{ conversationId: string; isMuted: boolean; isArchived: boolean; conversation: ConversationPayload }>;
-
   })) as unknown as Array<{
     conversationId: string;
     isMuted: boolean;

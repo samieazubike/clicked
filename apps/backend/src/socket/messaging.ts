@@ -499,7 +499,11 @@ export function registerMessagingHandlers(io: Server, socket: AuthSocket): void 
   socket.on(
     'typing_start',
     async (payload?: { conversationId?: string; deviceId?: string; [key: string]: unknown }) => {
-      if (!payload || typeof payload.conversationId !== 'string' || !payload.conversationId.trim()) {
+      if (
+        !payload ||
+        typeof payload.conversationId !== 'string' ||
+        !payload.conversationId.trim()
+      ) {
         socket.emit('error', { event: 'typing_start', message: 'Invalid conversationId' });
         return;
       }
@@ -532,7 +536,9 @@ export function registerMessagingHandlers(io: Server, socket: AuthSocket): void 
         relayPayload.deviceId = payload.deviceId.trim();
       }
 
-      const timerKey = relayPayload.deviceId ? `${conversationId}:${relayPayload.deviceId}` : conversationId;
+      const timerKey = relayPayload.deviceId
+        ? `${conversationId}:${relayPayload.deviceId}`
+        : conversationId;
       const existingTimer = typingTimers.get(timerKey);
       if (existingTimer) {
         clearTimeout(existingTimer);
@@ -559,7 +565,11 @@ export function registerMessagingHandlers(io: Server, socket: AuthSocket): void 
   socket.on(
     'typing_stop',
     async (payload?: { conversationId?: string; deviceId?: string; [key: string]: unknown }) => {
-      if (!payload || typeof payload.conversationId !== 'string' || !payload.conversationId.trim()) {
+      if (
+        !payload ||
+        typeof payload.conversationId !== 'string' ||
+        !payload.conversationId.trim()
+      ) {
         socket.emit('error', { event: 'typing_stop', message: 'Invalid conversationId' });
         return;
       }
@@ -592,7 +602,9 @@ export function registerMessagingHandlers(io: Server, socket: AuthSocket): void 
         relayPayload.deviceId = payload.deviceId.trim();
       }
 
-      const timerKey = relayPayload.deviceId ? `${conversationId}:${relayPayload.deviceId}` : conversationId;
+      const timerKey = relayPayload.deviceId
+        ? `${conversationId}:${relayPayload.deviceId}`
+        : conversationId;
       const existingTimer = typingTimers.get(timerKey);
       if (existingTimer) {
         clearTimeout(existingTimer);

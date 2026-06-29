@@ -110,7 +110,9 @@ describe('Typing indicator Socket events (typing_start / typing_stop)', () => {
     const { registerMessagingHandlers } = await import('../socket/messaging.js');
     registerMessagingHandlers(io as never, socket as never);
 
-    const handler = (socket as EventEmitter).listeners('typing_start')[0] as (p: unknown) => Promise<void>;
+    const handler = (socket as EventEmitter).listeners('typing_start')[0] as (
+      p: unknown,
+    ) => Promise<void>;
     await handler({ conversationId });
 
     // Zero DB writes
@@ -136,7 +138,9 @@ describe('Typing indicator Socket events (typing_start / typing_stop)', () => {
     const { registerMessagingHandlers } = await import('../socket/messaging.js');
     registerMessagingHandlers(io as never, socket as never);
 
-    const handler = (socket as EventEmitter).listeners('typing_start')[0] as (p: unknown) => Promise<void>;
+    const handler = (socket as EventEmitter).listeners('typing_start')[0] as (
+      p: unknown,
+    ) => Promise<void>;
     await handler({
       conversationId,
       deviceId,
@@ -164,7 +168,9 @@ describe('Typing indicator Socket events (typing_start / typing_stop)', () => {
     const { registerMessagingHandlers } = await import('../socket/messaging.js');
     registerMessagingHandlers(io as never, socket as never);
 
-    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (p: unknown) => Promise<void>;
+    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (
+      p: unknown,
+    ) => Promise<void>;
     await startHandler({ conversationId });
 
     expect(socket.roomEmitted).toHaveLength(1);
@@ -193,8 +199,12 @@ describe('Typing indicator Socket events (typing_start / typing_stop)', () => {
     const { registerMessagingHandlers } = await import('../socket/messaging.js');
     registerMessagingHandlers(io as never, socket as never);
 
-    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (p: unknown) => Promise<void>;
-    const stopHandler = (socket as EventEmitter).listeners('typing_stop')[0] as (p: unknown) => Promise<void>;
+    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (
+      p: unknown,
+    ) => Promise<void>;
+    const stopHandler = (socket as EventEmitter).listeners('typing_stop')[0] as (
+      p: unknown,
+    ) => Promise<void>;
 
     await startHandler({ conversationId });
     await stopHandler({ conversationId });
@@ -218,7 +228,9 @@ describe('Typing indicator Socket events (typing_start / typing_stop)', () => {
     const { registerMessagingHandlers } = await import('../socket/messaging.js');
     registerMessagingHandlers(io as never, socket as never);
 
-    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (p: unknown) => Promise<void>;
+    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (
+      p: unknown,
+    ) => Promise<void>;
     await startHandler({ conversationId });
 
     expect(socket.to).not.toHaveBeenCalled();
@@ -241,7 +253,9 @@ describe('Typing indicator Socket events (typing_start / typing_stop)', () => {
     const { registerMessagingHandlers } = await import('../socket/messaging.js');
     registerMessagingHandlers(io as never, socket as never);
 
-    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (p: unknown) => Promise<void>;
+    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (
+      p: unknown,
+    ) => Promise<void>;
     await startHandler({ conversationId, deviceId });
 
     expect(socket.roomEmitted).toHaveLength(1);
@@ -275,8 +289,12 @@ describe('Typing indicator Socket events (typing_start / typing_stop)', () => {
     const { registerMessagingHandlers } = await import('../socket/messaging.js');
     registerMessagingHandlers(io as never, socket as never);
 
-    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (p: unknown) => Promise<void>;
-    const sendHandler = (socket as EventEmitter).listeners('send_message')[0] as (p: unknown) => Promise<void>;
+    const startHandler = (socket as EventEmitter).listeners('typing_start')[0] as (
+      p: unknown,
+    ) => Promise<void>;
+    const sendHandler = (socket as EventEmitter).listeners('send_message')[0] as (
+      p: unknown,
+    ) => Promise<void>;
 
     await startHandler({ conversationId });
     expect(socket.roomEmitted).toHaveLength(1);
