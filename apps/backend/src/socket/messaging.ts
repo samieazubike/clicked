@@ -12,6 +12,7 @@ import type { AuthSocket } from '../middleware/socketAuth.js';
 import { invalidateConversationCaches } from '../lib/conversationCache.js';
 import { serializeMessage } from '../lib/messages.js';
 import { redis } from '../lib/redis.js';
+import { deliverMessage } from '../services/deliveryPipeline.js';
 import { publishEphemeral, readMissedEvents } from '../services/resumeStream.js';
 
 const PAGE_SIZE = 30;
@@ -131,7 +132,9 @@ export function registerMessagingHandlers(io: Server, socket: AuthSocket): void 
         socket.emit('message_ack', { messageId, sequenceNumber: message.sequenceNumber });
       }
 
-      io.to(conversationId).emit('new_message', message);
+      // Deliver: storage is guaranteed above; pipeline re-validates membership,
+      // resolves active devices, and pushes each device exactly its envelope.
+      await deliverMessage(io, message, conversationId);
 
       const members = await db.query.conversationMembers.findMany({
         where: eq(conversationMembers.conversationId, conversationId),
